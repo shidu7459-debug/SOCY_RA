@@ -1,0 +1,257 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOCYRA</title>
+
+<style>
+body{margin:0;font-family:Segoe UI;background:#fafafa}
+.hidden{display:none}
+
+/* SPLASH */
+#splash{
+  position:fixed;inset:0;background:#fff;
+  display:flex;justify-content:center;align-items:center;z-index:9999;
+}
+#splash img{width:160px;animation:fade 3s forwards}
+@keyframes fade{0%{opacity:1}80%{opacity:1}100%{opacity:0}}
+
+/* HEADER */
+header{
+  background:#fff;padding:10px;
+  display:flex;justify-content:space-between;
+  border-bottom:1px solid #ddd;font-weight:bold;
+}
+
+/* STORIES */
+.stories{display:flex;gap:12px;padding:10px;overflow-x:auto;background:#fff}
+.story img{width:60px;height:60px;border-radius:50%;border:3px solid #ff004f}
+
+/* POSTS */
+.post{background:#fff;margin-bottom:10px}
+.post img,video{width:100%}
+.actions{padding:8px;font-size:20px;display:flex;gap:15px}
+
+/* FOOTER */
+.footer{
+  position:fixed;bottom:0;width:100%;
+  background:#fff;border-top:1px solid #ddd;
+  display:flex;justify-content:space-around;padding:10px 0;font-size:22px;
+}
+
+/* INPUTS */
+input,button{width:100%;padding:10px;margin-top:10px}
+button{background:#0095f6;color:#fff;border:none;border-radius:5px}
+
+/* PROFILE */
+.profile-img{
+  width:120px;height:120px;border-radius:50%;
+  border:3px solid #0095f6;object-fit:cover;
+}
+.counts{display:flex;justify-content:space-around;margin:15px 0;font-weight:bold}
+
+/* LIST */
+.list-item{
+  display:flex;justify-content:space-between;
+  padding:10px;border-bottom:1px solid #ddd;align-items:center;
+}
+.followBtn{
+  background:#0095f6;color:white;border:none;padding:6px 12px;border-radius:4px;
+}
+.following{background:#ddd;color:black}
+</style>
+</head>
+
+<body>
+
+<!-- SPLASH -->
+<div id="splash"><img src="logo.png"></div>
+
+<!-- LOGIN -->
+<div id="loginPage" class="hidden">
+  <h2 style="text-align:center">SOCYRA</h2>
+  <input id="emailInput" placeholder="Email">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- HOME -->
+<div id="homePage" class="hidden">
+<header>
+  <span>SOCYRA</span>
+  <span onclick="showSearch()">🔍</span>
+</header>
+
+<div class="stories" id="storyBar"></div>
+<div id="postList"></div>
+
+<div class="footer">
+  <span onclick="showHome()">🏠</span>
+  <span onclick="showSearch()">🔍</span>
+  <span onclick="showUpload()">➕</span>
+  <span onclick="showReels()">🎬</span>
+  <span onclick="showProfile()">👤</span>
+</div>
+</div>
+
+<!-- SEARCH -->
+<div id="searchPage" class="hidden">
+  <h3>Search Users</h3>
+  <input id="searchInput" oninput="searchUsers()" placeholder="Search">
+  <div id="searchResults"></div>
+  <button onclick="showHome()">Back</button>
+</div>
+
+<!-- PROFILE (SELF) -->
+<div id="profilePage" class="hidden">
+  <h3>My Profile</h3>
+  <img id="profileImg" class="profile-img">
+  <div class="counts">
+    <div onclick="showFollowersList()"><div id="followersCount">0</div>Followers</div>
+    <div onclick="showFollowingList()"><div id="followingCount">0</div>Following</div>
+  </div>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<!-- OTHER USER PROFILE -->
+<div id="userProfilePage" class="hidden">
+  <button onclick="goBack()">⬅ Back</button>
+  <img id="otherImg" class="profile-img">
+  <h3 id="otherName"></h3>
+  <div class="counts">
+    <div><div id="otherFollowers">0</div>Followers</div>
+    <div><div id="otherFollowing">0</div>Following</div>
+  </div>
+  <button id="otherFollowBtn"></button>
+</div>
+
+<!-- FOLLOWERS -->
+<div id="followersPage" class="hidden">
+  <h3>Followers</h3>
+  <div id="followersList"></div>
+  <button onclick="showProfile()">Back</button>
+</div>
+
+<!-- FOLLOWING -->
+<div id="followingPage" class="hidden">
+  <h3>Following</h3>
+  <div id="followingList"></div>
+  <button onclick="showProfile()">Back</button>
+</div>
+
+<script>
+let users = JSON.parse(localStorage.users || "{}");
+let following = JSON.parse(localStorage.following || "{}");
+let user="", lastPage="homePage";
+
+/* SPLASH */
+setTimeout(()=>{
+  splash.style.display="none";
+  loginPage.classList.remove("hidden");
+},3000);
+
+function login(){
+  user=emailInput.value;
+  if(!users[user]) users[user]={profile:"logo.png"};
+  if(!following[user]) following[user]=[];
+  localStorage.loggedUser=user;
+  save(); start();
+}
+
+function start(){
+  hideAll();homePage.classList.remove("hidden");
+}
+
+/* SEARCH */
+function searchUsers(){
+  searchResults.innerHTML="";
+  Object.keys(users).filter(u=>u!==user && u.includes(searchInput.value))
+  .forEach(u=>{
+    let f=following[user].includes(u);
+    searchResults.innerHTML+=`
+    <div class="list-item">
+      <span onclick="openUser('${u}')">${u}</span>
+      <button class="followBtn ${f?'following':''}"
+        onclick="toggleFollow('${u}');searchUsers()">
+        ${f?'Following':'Follow'}
+      </button>
+    </div>`;
+  });
+}
+
+/* OPEN USER PROFILE */
+function openUser(u){
+  lastPage="searchPage";
+  hideAll();
+  userProfilePage.classList.remove("hidden");
+  otherName.textContent=u;
+  otherImg.src=users[u].profile||"logo.png";
+  otherFollowers.textContent=getFollowers(u);
+  otherFollowing.textContent=following[u]?.length||0;
+
+  let f=following[user].includes(u);
+  otherFollowBtn.textContent=f?"Following":"Follow";
+  otherFollowBtn.className="followBtn "+(f?"following":"");
+  otherFollowBtn.onclick=()=>{toggleFollow(u);openUser(u);}
+}
+
+/* FOLLOW */
+function toggleFollow(u){
+  let f=following[user];
+  if(f.includes(u)) f=f.filter(x=>x!==u);
+  else f.push(u);
+  following[user]=f;
+  save();
+}
+
+/* FOLLOW COUNTS */
+function getFollowers(target){
+  let c=0;
+  Object.keys(following).forEach(u=>{
+    if(following[u].includes(target)) c++;
+  });
+  return c;
+}
+
+/* LISTS */
+function showFollowersList(){
+  hideAll();followersPage.classList.remove("hidden");
+  followersList.innerHTML="";
+  Object.keys(following).forEach(u=>{
+    if(following[u].includes(user))
+      followersList.innerHTML+=`<div class="list-item" onclick="openUser('${u}')">${u}</div>`;
+  });
+}
+function showFollowingList(){
+  hideAll();followingPage.classList.remove("hidden");
+  followingList.innerHTML="";
+  following[user].forEach(u=>{
+    followingList.innerHTML+=`<div class="list-item" onclick="openUser('${u}')">${u}</div>`;
+  });
+}
+
+/* NAV */
+function hideAll(){
+  document.querySelectorAll("body>div").forEach(d=>d.classList.add("hidden"));
+}
+function showHome(){hideAll();homePage.classList.remove("hidden")}
+function showSearch(){hideAll();searchPage.classList.remove("hidden")}
+function showProfile(){
+  hideAll();profilePage.classList.remove("hidden");
+  profileImg.src=users[user].profile;
+  followersCount.textContent=getFollowers(user);
+  followingCount.textContent=following[user].length;
+}
+function goBack(){hideAll();document.getElementById(lastPage).classList.remove("hidden")}
+function logout(){localStorage.clear();location.reload()}
+
+function save(){
+  localStorage.users=JSON.stringify(users);
+  localStorage.following=JSON.stringify(following);
+}
+</script>
+
+</body>
+</html>
+
+
+

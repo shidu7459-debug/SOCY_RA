@@ -1,0 +1,436 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOCYRA</title>
+
+<style>
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+  background:#fafafa;
+}
+.hidden{display:none}
+
+/* SPLASH */
+#splash{
+  position:fixed;
+  inset:0;
+  background:#fff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+#splash img{
+  width:160px;
+  animation:fade 3s forwards;
+}
+@keyframes fade{
+  0%{opacity:1}
+  70%{opacity:1}
+  100%{opacity:0}
+}
+
+/* HEADER */
+header{
+  background:#fff;
+  padding:10px;
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #ddd;
+  font-weight:bold;
+}
+
+/* STORIES */
+.stories{
+  display:flex;
+  gap:12px;
+  padding:10px;
+  overflow-x:auto;
+  background:#fff;
+  border-bottom:1px solid #ddd;
+}
+.story img{
+  width:60px;height:60px;
+  border-radius:50%;
+  border:3px solid #ff004f;
+}
+
+/* POSTS */
+.post{
+  background:#fff;
+  margin-bottom:10px;
+}
+.post img,video{width:100%}
+.actions{
+  padding:8px;
+  display:flex;
+  gap:15px;
+  font-size:20px;
+}
+
+/* REELS */
+.reel{
+  height:100vh;
+}
+.reel video{
+  height:100%;
+  width:100%;
+  object-fit:cover;
+}
+
+/* FOOTER */
+.footer{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#fff;
+  border-top:1px solid #ddd;
+  display:flex;
+  justify-content:space-around;
+  padding:10px 0;
+  font-size:22px;
+}
+
+/* INPUT */
+input,button{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+}
+button{
+  background:#0095f6;
+  border:none;
+  color:#fff;
+  border-radius:5px;
+}
+
+/* PROFILE */
+.profile-img{
+  width:120px;height:120px;
+  border-radius:50%;
+  border:3px solid #0095f6;
+  object-fit:cover;
+}
+.counts{
+  display:flex;
+  justify-content:space-around;
+  margin:15px 0;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* LIST */
+.list-item{
+  display:flex;
+  justify-content:space-between;
+  padding:10px;
+  border-bottom:1px solid #ddd;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SPLASH -->
+<div id="splash"><img src="logo.png"></div>
+
+<!-- LOGIN -->
+<div id="loginPage" class="hidden">
+  <h2 style="text-align:center">SOCYRA</h2>
+  <input id="emailInput" placeholder="Email">
+  <input id="passwordInput" type="password" placeholder="Password">
+  <button onclick="sendOTP()">Send OTP</button>
+  <button onclick="guestLogin()">Continue as Guest</button>
+</div>
+
+<!-- OTP -->
+<div id="otpPage" class="hidden">
+  <h3>OTP Verification</h3>
+  <input id="otpInput" placeholder="Enter OTP">
+  <button onclick="verifyOTP()">Verify</button>
+</div>
+
+<!-- HOME -->
+<div id="homePage" class="hidden">
+<header>
+  <span>SOCYRA</span>
+  <span onclick="showSearch()">🔍</span>
+</header>
+
+<div class="stories" id="storyBar"></div>
+<div id="postList"></div>
+
+<div class="footer">
+  <span onclick="showHome()">🏠</span>
+  <span onclick="showSearch()">🔍</span>
+  <span onclick="showUpload()">➕</span>
+  <span onclick="showReels()">🎬</span>
+  <span onclick="showProfile()">👤</span>
+</div>
+</div>
+
+<!-- SEARCH -->
+<div id="searchPage" class="hidden">
+  <h3>Search Users</h3>
+  <input id="searchInput" oninput="searchUsers()" placeholder="Search">
+  <div id="searchResults"></div>
+  <button onclick="showHome()">Back</button>
+</div>
+
+<!-- UPLOAD -->
+<div id="uploadPage" class="hidden">
+  <h3>Create</h3>
+  <input type="file" id="postFile" accept="image/*">
+  <button onclick="uploadPost()">Upload Post</button>
+
+  <input type="file" id="reelFile" accept="video/*">
+  <button onclick="uploadReel()">Upload Reel</button>
+
+  <button onclick="showHome()">Back</button>
+</div>
+
+<!-- REELS -->
+<div id="reelsPage" class="hidden">
+  <button onclick="showHome()">⬅ Back</button>
+  <div id="reelFeed"></div>
+</div>
+
+<!-- PROFILE -->
+<div id="profilePage" class="hidden">
+  <h3>Profile</h3>
+  <img id="profileImg" class="profile-img">
+
+  <div class="counts">
+    <div onclick="showFollowersList()">
+      <div id="followersCount">0</div>
+      <small>Followers</small>
+    </div>
+    <div onclick="showFollowingList()">
+      <div id="followingCount">0</div>
+      <small>Following</small>
+    </div>
+  </div>
+
+  <input type="file" id="profileFile">
+  <button onclick="updateProfile()">Update Photo</button>
+  <p id="profileEmail"></p>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<!-- FOLLOWERS -->
+<div id="followersPage" class="hidden">
+  <h3>Followers</h3>
+  <div id="followersList"></div>
+  <button onclick="showProfile()">Back</button>
+</div>
+
+<!-- FOLLOWING -->
+<div id="followingPage" class="hidden">
+  <h3>Following</h3>
+  <div id="followingList"></div>
+  <button onclick="showProfile()">Back</button>
+</div>
+
+<script>
+let users = JSON.parse(localStorage.users || "{}");
+let posts = JSON.parse(localStorage.posts || "[]");
+let following = JSON.parse(localStorage.following || "{}");
+
+let user="", isGuest=false, otp="";
+
+/* SPLASH */
+window.onload=()=>{
+  setTimeout(()=>{
+    splash.style.display="none";
+    if(localStorage.loggedUser){
+      user=localStorage.loggedUser;
+      start();
+    }else loginPage.classList.remove("hidden");
+  },3000);
+};
+
+/* OTP */
+function sendOTP(){
+  otp=Math.floor(100000+Math.random()*900000);
+  alert("OTP: "+otp);
+  loginPage.classList.add("hidden");
+  otpPage.classList.remove("hidden");
+}
+function verifyOTP(){
+  if(otpInput.value!=otp){alert("Wrong OTP");return;}
+  if(!users[emailInput.value]){
+    users[emailInput.value]={profile:""};
+    following[emailInput.value]=[];
+  }
+  user=emailInput.value;
+  localStorage.loggedUser=user;
+  save(); start();
+}
+
+/* GUEST */
+function guestLogin(){
+  isGuest=true;
+  user="Guest";
+  localStorage.loggedUser="Guest";
+  start();
+}
+
+/* START */
+function start(){
+  if(!following[user]) following[user]=[];
+  hideAll();
+  homePage.classList.remove("hidden");
+  loadStories();
+  loadPosts();
+}
+
+/* STORIES */
+function loadStories(){
+  storyBar.innerHTML="";
+  following[user].forEach(u=>{
+    storyBar.innerHTML+=`
+      <div class="story">
+        <img src="${users[u]?.profile||'logo.png'}">
+      </div>`;
+  });
+}
+
+/* POSTS */
+function uploadPost(){
+  if(isGuest){alert("Guest cannot upload");return;}
+  let r=new FileReader();
+  r.onload=()=>{
+    posts.unshift({type:"post",src:r.result,owner:user});
+    save(); showHome();
+  }
+  r.readAsDataURL(postFile.files[0]);
+}
+function uploadReel(){
+  if(isGuest){alert("Guest cannot upload");return;}
+  let r=new FileReader();
+  r.onload=()=>{
+    posts.unshift({type:"reel",src:r.result,owner:user});
+    save(); showHome();
+  }
+  r.readAsDataURL(reelFile.files[0]);
+}
+function loadPosts(){
+  postList.innerHTML="";
+  posts.filter(p=>p.type==="post").forEach(p=>{
+    postList.innerHTML+=`
+      <div class="post">
+        <img src="${p.src}">
+        <div class="actions">❤️ 💬 📤</div>
+      </div>`;
+  });
+}
+
+/* REELS */
+function showReels(){
+  hideAll();
+  reelsPage.classList.remove("hidden");
+  reelFeed.innerHTML="";
+  posts.filter(p=>p.type==="reel").forEach(p=>{
+    reelFeed.innerHTML+=`
+      <div class="reel">
+        <video src="${p.src}" autoplay muted loop></video>
+        <div class="actions">❤️ 💬 📤</div>
+      </div>`;
+  });
+}
+
+/* SEARCH + FOLLOW */
+function searchUsers(){
+  if(isGuest){
+    searchResults.innerHTML="<p>Login to follow users</p>";
+    return;
+  }
+  let q=searchInput.value.toLowerCase();
+  searchResults.innerHTML="";
+  Object.keys(users)
+    .filter(u=>u!==user && u.toLowerCase().includes(q))
+    .forEach(u=>{
+      let f=following[user].includes(u);
+      searchResults.innerHTML+=`
+        <div class="list-item">
+          <span>${u}</span>
+          <button onclick="toggleFollow('${u}')">
+            ${f?"Following":"Follow"}
+          </button>
+        </div>`;
+    });
+}
+function toggleFollow(u){
+  let f=following[user];
+  if(f.includes(u)) following[user]=f.filter(x=>x!==u);
+  else following[user].push(u);
+  save(); searchUsers();
+}
+
+/* PROFILE */
+function showProfile(){
+  hideAll();
+  profilePage.classList.remove("hidden");
+  profileImg.src=users[user]?.profile||"logo.png";
+  profileEmail.textContent=user;
+  followingCount.textContent=following[user].length;
+  followersCount.textContent=getFollowers(user);
+}
+function getFollowers(t){
+  let c=0;
+  Object.keys(following).forEach(u=>{
+    if(following[u].includes(t)) c++;
+  });
+  return c;
+}
+function updateProfile(){
+  let r=new FileReader();
+  r.onload=()=>{
+    users[user].profile=r.result;
+    save(); showProfile();
+  }
+  r.readAsDataURL(profileFile.files[0]);
+}
+
+/* LISTS */
+function showFollowersList(){
+  hideAll();
+  followersPage.classList.remove("hidden");
+  followersList.innerHTML="";
+  Object.keys(following).forEach(u=>{
+    if(following[u].includes(user))
+      followersList.innerHTML+=`<div class="list-item">${u}</div>`;
+  });
+}
+function showFollowingList(){
+  hideAll();
+  followingPage.classList.remove("hidden");
+  followingList.innerHTML="";
+  following[user].forEach(u=>{
+    followingList.innerHTML+=`<div class="list-item">${u}</div>`;
+  });
+}
+
+/* NAV */
+function hideAll(){
+  document.querySelectorAll("body>div").forEach(d=>d.classList.add("hidden"));
+}
+function showHome(){start()}
+function showSearch(){hideAll();searchPage.classList.remove("hidden")}
+function showUpload(){hideAll();uploadPage.classList.remove("hidden")}
+function logout(){localStorage.clear();location.reload()}
+
+/* SAVE */
+function save(){
+  localStorage.users=JSON.stringify(users);
+  localStorage.posts=JSON.stringify(posts);
+  localStorage.following=JSON.stringify(following);
+}
+</script>
+
+</body>
+</html>
+
+
